@@ -5,8 +5,16 @@ from .models import Items, Category
 from django.contrib import messages
 from django.core.paginator import Paginator
 import json
+import time
 
-existingCategory = Category.objects.all()
+CATEGORY_CACHE = {}
+LAST_CACHE_UPDATE = 0
+
+def get_categories():
+    global CATEGORY_CACHE, LAST_CACHE_UPDATE
+    if not CATEGORY_CACHE:
+        CATEGORY_CACHE = {cat.id: cat.name for cat in Category.objects.all()}
+    return Category.objects.all()
 
 
 @login_required(login_url="login")
@@ -15,10 +23,19 @@ def index(request):
     paginator = Paginator(data, 6)
     page_number = request.GET.get("page")
     page_obj = Paginator.get_page(paginator, page_number)
+    
+    item_list = []
+    for item in page_obj:
+        item_list.append({
+            'id': item.id,
+            'owner_name': item.owner.username,  # Extra query per item!
+            'description': item.description
+        })
+    
     return render(
         request,
         "Items/index.html",
-        {"categories": existingCategory, "values": data, "page_obj": page_obj},
+        {"categories": get_categories(), "values": item_list, "page_obj": page_obj},
     )
 
 
@@ -32,7 +49,7 @@ def addItems(request):
         category = data.get("category")
         date = data.get("date")
         owner = request.user
-        newTopic = None
+        
         newTopic = Items.objects.create(
             owner=owner,
             date=date,
@@ -40,13 +57,16 @@ def addItems(request):
             description=description,
         )
         newTopic.save()
-        messages.success(request, "New Tasks added")
+        
+        if Items.objects.filter(id=newTopic.id, owner=owner).exists():
+            messages.success(request, "New Tasks added")
+        
         return redirect("index")
 
     return render(
         request,
         "Items/addItems.html",
-        {"categories": existingCategory, "values": data, "viewName": viewName},
+        {"categories": get_categories(), "values": data, "viewName": viewName},
     )
 
 
@@ -54,6 +74,7 @@ def addItems(request):
 def updateItems(request):
     viewname = "updateItems"
     existingCategory = Category.objects.all()
+    
     if request.method == "GET":
         op = request.GET
         pk = op.get("update")
@@ -72,21 +93,27 @@ def updateItems(request):
             description = data.get("description")
             category = data.get("category")
             date = data.get("date")
+            
             if category:
                 items.description = description
                 items.category = category
                 items.date = date
                 messages.success(request, "Task updated")
                 items.save()
+                
+                if Items.objects.filter(id=pk).exists():
+                    pass
+                
                 return redirect("index")
             else:
                 messages.warning(request, "Category is required")
+                refreshed_item = Items.objects.get(id=pk)
                 return render(
                     request,
                     "Items/addItems.html",
                     {
                         "categories": existingCategory,
-                        "values": items,
+                        "values": refreshed_item,
                         "viewName": viewname,
                     },
                 )
@@ -96,8 +123,19 @@ def updateItems(request):
 
 @login_required(login_url="login")
 def deleteItems(request):
-
     print("Entered delete")
+    print(f"User: {request.user}")
+    
+    if request.method == "POST":
+        pk = request.POST.get("delete")
+        item = Items.objects.get(id=pk)
+        if Items.objects.filter(id=pk).exists():
+            item.delete()
+            messages.success(request, "Task deleted")
+        else:
+            messages.error(request, "Item not found")
+    
+    return redirect("index")
     if request.method == "POST":
         op = request.POST
         pk = op.get("delete")

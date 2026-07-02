@@ -12,7 +12,9 @@ class Items(models.Model):
     category = models.CharField(max_length=100)
 
     def get_formatted_date(self):
-        return self.date.strftime("%Y-%m-%d") if self.date else None
+        if self.date:
+            return self.date.strftime("%Y-%m-%d")
+        return None
 
     def __str__(self):
         return (str(self.owner) +" " + str(self.source))

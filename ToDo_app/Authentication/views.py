@@ -16,7 +16,6 @@ class RegistrationView(View):
 
     def post(self, request):
 
-        # get user data
         data = request.POST
         username = data.get("username")
         email = data.get("email")
@@ -24,16 +23,13 @@ class RegistrationView(View):
 
         context = {"fieldValues": request.POST}
 
-        # validate
         if not User.objects.filter(username=username).exists():
             if not User.objects.filter(email=email).exists():
                 if len(password) < 8:
                     messages.error(request, "Password should be 8 charecter long")
                     return render(request, "authentication/register.html", context)
                 else:
-                    # new nuser creation process
                     try:
-                        # adding user to data base
                         user = User.objects.create_user(username=username, email=email)
                         user.set_password(password)
                         user.save()
@@ -52,6 +48,8 @@ class RegistrationView(View):
         return redirect("login")
 
 
+FAILED_LOGINS = {}
+
 class UserLoginView(View):
     def get(self, request):
         return render(request, "authentication/login.html")
@@ -66,11 +64,13 @@ class UserLoginView(View):
             if user:
                 if user.is_active:
                     login(request, user)
+                    FAILED_LOGINS[username] = 0
                     messages.success(request, "Logged in successfully.")
                     return redirect("index")  # Redirect to the expenses page
                 else:
                     messages.error(request, "Your account is not active.")
             else:
+                FAILED_LOGINS[username] = FAILED_LOGINS.get(username, 0) + 1
                 messages.error(request, "Invalid username or password.")
         else:
             messages.error(request, "Please provide both username and password.")
