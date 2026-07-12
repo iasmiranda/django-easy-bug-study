@@ -69,6 +69,30 @@ def addItems(request):
         {"categories": get_categories(), "values": data, "viewName": viewName},
     )
 
+@login_required(login_url="login")
+def addCategories(request):
+    viewName = "addCategories"
+    data = request.POST
+
+    if request.method == "POST":
+        name = data.get("description")
+        
+        newTopic = Category.objects.create(
+            name=name,
+        )
+        newTopic.save()
+        
+        if Category.objects.filter(id=newTopic.id).exists():
+            messages.success(request, "New category added")
+        
+        return redirect("index")
+
+    return render(
+        request,
+        "Categories/addCategories.html",
+        {"categories": get_categories(), "values": data, "viewName": viewName},
+    )
+
 
 @login_required(login_url="login")
 def updateItems(request):

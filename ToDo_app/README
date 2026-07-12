@@ -1,0 +1,10 @@
+Created venv
+Installed Django
+- python manage.py migrate
+- python manage.py runserver
+* pswd open, isso era pra estar? 
+- Para criar uma nova atividade, requer um campo categoria que não existe como adicionar
+Solução: criada nova rota de categorias :) 
+
+Testado update | delete e criação de uma nova task e deu bom! :D
+OBRIGADA!
